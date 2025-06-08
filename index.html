@@ -2,9 +2,12 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <title>Barcelona Locker Navigation</title>
+  <!-- Mapbox GL JS -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.js"></script>
   <link href="https://api.mapbox.com/mapbox-gl-js/v2.9.1/mapbox-gl.css" rel="stylesheet">
   <style>
+    body { margin: 0; padding: 0; }
     #map { width: 100%; height: 100vh; }
     .locker-marker {
       font-size: 24px;
@@ -15,64 +18,134 @@
 </head>
 <body>
   <div id="map"></div>
+
   <script>
-    // Initialize map
-    mapboxgl.accessToken = 'YOUR_MAPBOX_TOKEN';
+    // ======================
+    // 1. MAP INITIALIZATION
+    // ======================
+    // Your personal Mapbox token
+    mapboxgl.accessToken = 'pk.eyJ1IjoiZW1hbnVsZWxlIiwiYSI6ImNtYm8zNzJ0aTFqbTUyanF4NmczZDc0NzcifQ.tv_KtmE5e1rGbmMtC_JR-Q';
+    
+    // Create the map centered on Barcelona
     const map = new mapboxgl.Map({
-      container: 'map',
-      style: 'mapbox://styles/mapbox/streets-v11',
-      center: [2.1734, 41.3851], // Barcelona center
-      zoom: 12
+      container: 'map', // Div ID where map will appear
+      style: 'mapbox://styles/mapbox/streets-v11', // Map style
+      center: [2.1734, 41.3851], // [longitude, latitude] of Barcelona center
+      zoom: 12 // Initial zoom level
     });
 
-    // Add locker markers
+    // ======================
+    // 2. LOCKER LOCATIONS
+    // ======================
     const lockers = [
-      {id: 1, name: "BCN Airport", lng: 2.0833, lat: 41.2974},
-      {id: 2, name: "Barcelona Sants", lng: 2.1406, lat: 41.3796},
-      {id: 3, name: "Estació de França", lng: 2.1836, lat: 41.3850},
-      {id: 4, name: "Passeig de Gràcia", lng: 2.1657, lat: 41.3919},
-      {id: 5, name: "Clot-Aragó", lng: 2.1864, lat: 41.4106},
-      {id: 6, name: "Barcelona Nord", lng: 2.1814, lat: 41.3936}
+      {
+        id: 1,
+        name: "BCN Airport",
+        coordinates: [2.0833, 41.2974], // [lng, lat]
+        description: "Locker 1 - Terminal T1"
+      },
+      {
+        id: 2,
+        name: "Barcelona Sants",
+        coordinates: [2.1406, 41.3796],
+        description: "Locker 2 - Main train station"
+      },
+      {
+        id: 3,
+        name: "Estació de França",
+        coordinates: [2.1836, 41.3850],
+        description: "Locker 3 - Near city center"
+      },
+      {
+        id: 4,
+        name: "Passeig de Gràcia",
+        coordinates: [2.1657, 41.3919],
+        description: "Locker 4 - Shopping area"
+      },
+      {
+        id: 5,
+        name: "Clot-Aragó",
+        coordinates: [2.1864, 41.4106],
+        description: "Locker 5 - Residential area"
+      },
+      {
+        id: 6,
+        name: "Barcelona Nord",
+        coordinates: [2.1814, 41.3936],
+        description: "Locker 6 - Bus station"
+      }
     ];
 
-    lockers.forEach(l => {
+    // ======================
+    // 3. ADD LOCKER MARKERS
+    // ======================
+    lockers.forEach(locker => {
+      // Create custom marker element
       const el = document.createElement('div');
       el.className = 'locker-marker';
       el.innerHTML = '🔒';
+      el.title = locker.name;
       
+      // Create the marker
       new mapboxgl.Marker(el)
-        .setLngLat([l.lng, l.lat])
-        .setPopup(new mapboxgl.Popup().setHTML(`<b>${l.name}</b><br>Locker ${l.id}`))
+        .setLngLat(locker.coordinates)
+        .setPopup(new mapboxgl.Popup()
+          .setHTML(`
+            <h3>${locker.name}</h3>
+            <p>${locker.description}</p>
+            <small>ID: ${locker.id}</small>
+          `))
         .addTo(map);
     });
 
-    // Route drawing function
-    function drawRoute(routeData) {
-      const data = JSON.parse(routeData);
-      if (map.getSource('route')) {
-        map.removeLayer('route');
-        map.removeSource('route');
-      }
-      
-      map.addLayer({
-        id: 'route',
-        type: 'line',
-        source: {
-          type: 'geojson',
-          data: data.routes[0].geometry
-        },
-        paint: {
-          'line-color': '#3b82f6',
-          'line-width': 4
+    // ======================
+    // 4. ROUTE DRAWING FUNCTION
+    // (Called from MIT App Inventor)
+    // ======================
+    window.drawRoute = function(routeData) {
+      try {
+        const data = JSON.parse(routeData);
+        
+        // Remove existing route if any
+        if (map.getSource('route')) {
+          map.removeLayer('route');
+          map.removeSource('route');
         }
-      });
-      
-      const bounds = new mapboxgl.LngLatBounds();
-      data.routes[0].geometry.coordinates.forEach(coord => {
-        bounds.extend(coord);
-      });
-      map.fitBounds(bounds, {padding: 50});
-    }
+        
+        // Add new route layer
+        map.addLayer({
+          id: 'route',
+          type: 'line',
+          source: {
+            type: 'geojson',
+            data: data.routes[0].geometry
+          },
+          paint: {
+            'line-color': '#4285F4',
+            'line-width': 4,
+            'line-opacity': 0.7
+          }
+        });
+        
+        // Fit map to the route bounds
+        const bounds = new mapboxgl.LngLatBounds();
+        data.routes[0].geometry.coordinates.forEach(coord => {
+          bounds.extend(coord);
+        });
+        map.fitBounds(bounds, { padding: 50 });
+        
+      } catch (error) {
+        console.error("Error drawing route:", error);
+      }
+    };
+
+    // ======================
+    // 5. MAP LOAD EVENT
+    // ======================
+    map.on('load', () => {
+      console.log("Map loaded successfully!");
+      // You can add more map features here if needed
+    });
   </script>
 </body>
 </html>
